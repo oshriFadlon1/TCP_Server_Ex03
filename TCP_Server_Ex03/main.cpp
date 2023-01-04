@@ -16,7 +16,7 @@ struct SocketState
 	int len;
 };
 
-const int TIME_PORT = 27015;
+const int HTTP_PORT = 42069;
 const int MAX_SOCKETS = 60;
 const int EMPTY = 0;
 const int LISTEN = 1;
@@ -98,7 +98,7 @@ void main()
 	// IP Port. The htons (host to network - short) function converts an
 	// unsigned short from host to TCP/IP network byte order 
 	// (which is big-endian).
-	serverService.sin_port = htons(TIME_PORT);
+	serverService.sin_port = htons(HTTP_PORT);
 
 	// Bind the socket for client's requests.
 
