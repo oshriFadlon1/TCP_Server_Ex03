@@ -17,7 +17,7 @@ int main()
 
 	BindSocket(listenSocket, serverService);
 
-	addSocket(listenSocket, LISTEN);
+	addSocket(listenSocket, LISTEN,sockets,socketsCount);
 
 
 	while (true)
@@ -45,7 +45,7 @@ int main()
 		{
 			cout << "Time Server: Error at select(): " << WSAGetLastError() << endl;
 			WSACleanup();
-			return;
+			return 0;
 		}
 
 		for (int i = 0; i < MAX_SOCKETS && nfd > 0; i++)
@@ -56,11 +56,11 @@ int main()
 				switch (sockets[i].recv)
 				{
 				case LISTEN:
-					acceptConnection(i);
+					acceptConnection(i, sockets, socketsCount);
 					break;
 
 				case RECEIVE:
-					receiveMessage(i);
+					receiveMessage(i, sockets, socketsCount);
 					break;
 				}
 			}
@@ -74,7 +74,7 @@ int main()
 				switch (sockets[i].send)
 				{
 				case SEND:
-					sendMessage(i);
+					sendMessage(i, sockets, socketsCount);
 					break;
 				}
 			}

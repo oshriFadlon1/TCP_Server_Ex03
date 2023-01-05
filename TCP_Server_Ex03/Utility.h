@@ -2,6 +2,7 @@
 #pragma once
 #define _CRT_SECURE_NO_WARNINGS
 #define _CRT_NONSTDC_NO_DEPRECATE
+#define _WINSOCK_DEPRECATED_NO_WARNINGS
 #include <iostream>
 using namespace std;
 #pragma comment(lib, "Ws2_32.lib")
