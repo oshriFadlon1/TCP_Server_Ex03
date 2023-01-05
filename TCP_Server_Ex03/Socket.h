@@ -10,8 +10,8 @@ typedef struct SocketState
 	int len;
 }SocketState;
 
-bool addSocket(SOCKET id, int what);
-void removeSocket(int index);
-void acceptConnection(int index);
-void receiveMessage(int index);
-void sendMessage(int index);
+bool addSocket(SOCKET id, int what, SocketState* sockets, int& socketsCount);
+void removeSocket(int index, SocketState* sockets, int& socketsCount);
+void acceptConnection(int index, SocketState* sockets, int& socketsCount);
+void receiveMessage(int index, SocketState* sockets, int& socketsCount);
+void sendMessage(int index, SocketState* sockets, int& socketsCount);

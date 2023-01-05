@@ -1,6 +1,6 @@
 #include "Socket.h"
 
-bool addSocket(SOCKET id, int what)
+bool addSocket(SOCKET id, int what, SocketState* sockets, int& socketsCount)
 {
 	for (int i = 0; i < MAX_SOCKETS; i++)
 	{
@@ -17,14 +17,14 @@ bool addSocket(SOCKET id, int what)
 	return (false);
 }
 
-void removeSocket(int index)
+void removeSocket(int index, SocketState* sockets, int& socketsCount)
 {
 	sockets[index].recv = EMPTY;
 	sockets[index].send = EMPTY;
 	socketsCount--;
 }
 
-void acceptConnection(int index)
+void acceptConnection(int index, SocketState* sockets, int& socketsCount)
 {
 	SOCKET id = sockets[index].id;
 	struct sockaddr_in from;		// Address of sending partner
@@ -47,7 +47,7 @@ void acceptConnection(int index)
 		cout << "Time Server: Error at ioctlsocket(): " << WSAGetLastError() << endl;
 	}
 
-	if (addSocket(msgSocket, RECEIVE) == false)
+	if (addSocket(msgSocket, RECEIVE, sockets, socketsCount) == false)
 	{
 		cout << "\t\tToo many connections, dropped!\n";
 		closesocket(id);
@@ -55,7 +55,7 @@ void acceptConnection(int index)
 	return;
 }
 
-void receiveMessage(int index)
+void receiveMessage(int index, SocketState* sockets, int& socketsCount)
 {
 	SOCKET msgSocket = sockets[index].id;
 
@@ -66,13 +66,13 @@ void receiveMessage(int index)
 	{
 		cout << "Time Server: Error at recv(): " << WSAGetLastError() << endl;
 		closesocket(msgSocket);
-		removeSocket(index);
+		removeSocket(index, sockets, socketsCount);
 		return;
 	}
 	if (bytesRecv == 0)
 	{
 		closesocket(msgSocket);
-		removeSocket(index);
+		removeSocket(index, sockets, socketsCount);
 		return;
 	}
 	else
@@ -103,7 +103,7 @@ void receiveMessage(int index)
 			else if (strncmp(sockets[index].buffer, "Exit", 4) == 0)
 			{
 				closesocket(msgSocket);
-				removeSocket(index);
+				removeSocket(index, sockets, socketsCount);
 				return;
 			}
 		}
@@ -111,7 +111,7 @@ void receiveMessage(int index)
 
 }
 
-void sendMessage(int index)
+void sendMessage(int index, SocketState* sockets, int& socketsCount)
 {
 	int bytesSent = 0;
 	char sendBuff[255];
