@@ -11,6 +11,18 @@ using namespace std;
 #include <time.h>
 #include <Windows.h>
 
+enum httpMethods {
+	Error,
+	Get,
+	Head,
+	Post,
+	Delete,
+	Options,
+	Put,
+	Trace
+};
+
+
 const int TIME_PORT = 42069;
 const int MAX_SOCKETS = 60;
 const int EMPTY = 0;
@@ -18,6 +30,4 @@ const int LISTEN = 1;
 const int RECEIVE = 2;
 const int IDLE = 3;
 const int SEND = 4;
-const int SEND_TIME = 1;
-const int SEND_SECONDS = 2;
 

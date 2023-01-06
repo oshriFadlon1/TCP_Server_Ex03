@@ -2,6 +2,13 @@
 
 bool addSocket(SOCKET id, int what, SocketState* sockets, int& socketsCount)
 {
+	unsigned long flag = 1;
+	if (ioctlsocket(id, FIONBIO, &flag) != 0)
+	{
+		cout << "Time Server: Error at ioctlsocket(): " << WSAGetLastError() << endl;
+		//throw
+	}
+
 	for (int i = 0; i < MAX_SOCKETS; i++)
 	{
 		if (sockets[i].recv == EMPTY)
@@ -31,28 +38,19 @@ void acceptConnection(int index, SocketState* sockets, int& socketsCount)
 	int fromLen = sizeof(from);
 
 	SOCKET msgSocket = accept(id, (struct sockaddr*)&from, &fromLen);
+
 	if (INVALID_SOCKET == msgSocket)
 	{
 		cout << "Time Server: Error at accept(): " << WSAGetLastError() << endl;
-		return;
+		//throw
 	}
-	cout << "Time Server: Client " << inet_ntoa(from.sin_addr) << ":" << ntohs(from.sin_port) << " is connected." << endl;
-
-	//
-	// Set the socket to be in non-blocking mode.
-	//
-	unsigned long flag = 1;
-	if (ioctlsocket(msgSocket, FIONBIO, &flag) != 0)
-	{
-		cout << "Time Server: Error at ioctlsocket(): " << WSAGetLastError() << endl;
-	}
+	//cout << "Time Server: Client " << inet_ntoa(from.sin_addr) << ":" << ntohs(from.sin_port) << " is connected." << endl;
 
 	if (addSocket(msgSocket, RECEIVE, sockets, socketsCount) == false)
 	{
 		cout << "\t\tToo many connections, dropped!\n";
 		closesocket(id);
 	}
-	return;
 }
 
 void receiveMessage(int index, SocketState* sockets, int& socketsCount)
@@ -150,3 +148,62 @@ void sendMessage(int index, SocketState* sockets, int& socketsCount)
 
 	sockets[index].send = IDLE;
 }
+
+void startServer(SocketState* sockets, int& socketsCount)
+{
+	while (true)
+	{
+
+		fd_set waitRecv;
+		FD_ZERO(&waitRecv);
+		for (int i = 0; i < MAX_SOCKETS; i++)
+		{
+			if ((sockets[i].recv == LISTEN) || (sockets[i].recv == RECEIVE))
+				FD_SET(sockets[i].id, &waitRecv);
+		}
+
+		fd_set waitSend;
+		FD_ZERO(&waitSend);
+		for (int i = 0; i < MAX_SOCKETS; i++)
+		{
+			if (sockets[i].send == SEND)
+				FD_SET(sockets[i].id, &waitSend);
+		}
+
+		int nfd;
+		selectCheck(nfd, waitRecv, waitSend);
+
+		for (int i = 0; i < MAX_SOCKETS && nfd > 0; i++)
+		{
+			if (FD_ISSET(sockets[i].id, &waitRecv))
+			{
+				nfd--;
+				switch (sockets[i].recv)
+				{
+				case LISTEN:
+					acceptConnection(i, sockets, socketsCount);
+					break;
+
+				case RECEIVE:
+					receiveMessage(i, sockets, socketsCount);
+					break;
+				}
+			}
+		}
+
+		for (int i = 0; i < MAX_SOCKETS && nfd > 0; i++)
+		{
+			if (FD_ISSET(sockets[i].id, &waitSend))
+			{
+				nfd--;
+				switch (sockets[i].send)
+				{
+				case SEND:
+					sendMessage(i, sockets, socketsCount);
+					break;
+				}
+			}
+		}
+	}
+}
+
