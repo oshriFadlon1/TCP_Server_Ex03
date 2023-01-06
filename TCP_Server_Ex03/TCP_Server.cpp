@@ -64,3 +64,16 @@ void CloseServer(SOCKET& socket)
 	closesocket(socket);
 	WSACleanup();
 }
+
+void selectCheck(int& nfd, fd_set& waitRecv, fd_set& waitSend)
+{
+	string message;
+	nfd = select(0, &waitRecv, &waitSend, NULL, NULL);
+	if (nfd == SOCKET_ERROR)
+	{
+		message = "Time Server: Error at select(): " + WSAGetLastError();
+		WSACleanup();
+		throw message;
+	}
+}
+
