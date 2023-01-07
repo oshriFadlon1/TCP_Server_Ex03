@@ -58,6 +58,7 @@ void receiveMessage(int index, SocketState* sockets, int& socketsCount)
 	SOCKET msgSocket = sockets[index].id;
 
 	int len = sockets[index].len;
+	sockets[index].startTime = clock();
 	int bytesRecv = recv(msgSocket, &sockets[index].buffer[len], sizeof(sockets[index].buffer) - len, 0);
 
 	if (SOCKET_ERROR == bytesRecv)
@@ -80,30 +81,16 @@ void receiveMessage(int index, SocketState* sockets, int& socketsCount)
 
 		sockets[index].len += bytesRecv;
 
+		// to do hendle the request
+		// with switch 
+
 		if (sockets[index].len > 0)
 		{
-			if (strncmp(sockets[index].buffer, "TimeString", 10) == 0)
-			{
-				sockets[index].send = SEND;
-				sockets[index].sendSubType = SEND_TIME;
-				memcpy(sockets[index].buffer, &sockets[index].buffer[10], sockets[index].len - 10);
-				sockets[index].len -= 10;
-				return;
-			}
-			else if (strncmp(sockets[index].buffer, "SecondsSince1970", 16) == 0)
-			{
-				sockets[index].send = SEND;
-				sockets[index].sendSubType = SEND_SECONDS;
-				memcpy(sockets[index].buffer, &sockets[index].buffer[16], sockets[index].len - 16);
-				sockets[index].len -= 16;
-				return;
-			}
-			else if (strncmp(sockets[index].buffer, "Exit", 4) == 0)
-			{
-				closesocket(msgSocket);
-				removeSocket(index, sockets, socketsCount);
-				return;
-			}
+			sockets[index].send = SEND;
+			// find the \0 in the socket buffer
+			int lenOfResponded;
+			memcpy(sockets[index].buffer, &sockets[index].buffer[lenOfResponded], sockets[index].len - lenOfResponded);
+			sockets[index].len -= lenOfResponded;
 		}
 	}
 
@@ -112,41 +99,39 @@ void receiveMessage(int index, SocketState* sockets, int& socketsCount)
 void sendMessage(int index, SocketState* sockets, int& socketsCount)
 {
 	int bytesSent = 0;
-	char sendBuff[255];
 
 	SOCKET msgSocket = sockets[index].id;
-	if (sockets[index].sendSubType == SEND_TIME)
+	sockets[index].endTime = clock();
+
+	double timePassed = (double)(sockets[index].endTime - sockets[index].startTime) / CLOCKS_PER_SEC;
+
+	if (timePassed <= 120)
 	{
-		// Answer client's request by the current time string.
+		// switch create the response 
+		string response; //= createResponse(index, sockets);
 
-		// Get the current time.
-		time_t timer;
-		time(&timer);
-		// Parse the current time to printable string.
-		strcpy(sendBuff, ctime(&timer));
-		sendBuff[strlen(sendBuff) - 1] = 0; //to remove the new-line from the created string
+		bytesSent = send(msgSocket, response.c_str(), response.size(), 0);
+		if (SOCKET_ERROR == bytesSent)
+		{
+			cout << "Time Server: Error at send(): " << WSAGetLastError() << endl;
+			return;
+			// throw
+		}
+		if (sockets[index].len > 0)
+		{
+			sockets[index].send = SEND;
+		}
+		else
+		{
+			sockets[index].send = IDLE;
+		}	
 	}
-	else if (sockets[index].sendSubType == SEND_SECONDS)
+	else // it over 2 minutes
 	{
-		// Answer client's request by the current time in seconds.
-
-		// Get the current time.
-		time_t timer;
-		time(&timer);
-		// Convert the number to string.
-		itoa((int)timer, sendBuff, 10);
+		closesocket(sockets[index].id);
+		removeSocket(index, sockets, socketsCount);
+		cout << "\nClient connection closed... Socket: " << sockets[index].id;
 	}
-
-	bytesSent = send(msgSocket, sendBuff, (int)strlen(sendBuff), 0);
-	if (SOCKET_ERROR == bytesSent)
-	{
-		cout << "Time Server: Error at send(): " << WSAGetLastError() << endl;
-		return;
-	}
-
-	cout << "Time Server: Sent: " << bytesSent << "\\" << strlen(sendBuff) << " bytes of \"" << sendBuff << "\" message.\n";
-
-	sockets[index].send = IDLE;
 }
 
 void startServer(SocketState* sockets, int& socketsCount)
@@ -207,3 +192,14 @@ void startServer(SocketState* sockets, int& socketsCount)
 	}
 }
 
+void selectCheck(int& nfd, fd_set& waitRecv, fd_set& waitSend)
+{
+	string message;
+	nfd = select(0, &waitRecv, &waitSend, NULL, NULL);
+	if (nfd == SOCKET_ERROR)
+	{
+		message = "Time Server: Error at select(): " + WSAGetLastError();
+		WSACleanup();
+		throw message;
+	}
+}
