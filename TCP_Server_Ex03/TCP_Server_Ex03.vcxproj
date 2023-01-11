@@ -129,13 +129,11 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="Response.cpp" />
-    <ClCompile Include="Socket.cpp" />
+    <ClCompile Include="SokcetHandler.cpp" />
     <ClCompile Include="TCP_Server.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Response.h" />
-    <ClInclude Include="Socket.h" />
+    <ClInclude Include="SokcetHandler.h" />
     <ClInclude Include="TCP_Server.h" />
     <ClInclude Include="Utility.h" />
   </ItemGroup>
