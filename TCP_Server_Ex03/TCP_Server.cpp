@@ -64,5 +64,3 @@ void CloseServer(SOCKET& socket)
 	closesocket(socket);
 	WSACleanup();
 }
-
-
