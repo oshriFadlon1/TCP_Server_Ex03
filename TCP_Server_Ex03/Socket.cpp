@@ -2,11 +2,13 @@
 
 bool addSocket(SOCKET id, int what, SocketState* sockets, int& socketsCount)
 {
+	string message;
 	unsigned long flag = 1;
 	if (ioctlsocket(id, FIONBIO, &flag) != 0)
 	{
-		cout << "Time Server: Error at ioctlsocket(): " << WSAGetLastError() << endl;
-		//throw
+		
+		message = "Time Server: Error at ioctlsocket(): " + WSAGetLastError() ;
+		throw message;
 	}
 
 	for (int i = 0; i < MAX_SOCKETS; i++)
@@ -33,6 +35,7 @@ void removeSocket(int index, SocketState* sockets, int& socketsCount)
 
 void acceptConnection(int index, SocketState* sockets, int& socketsCount)
 {
+	string message;
 	SOCKET id = sockets[index].id;
 	struct sockaddr_in from;		// Address of sending partner
 	int fromLen = sizeof(from);
@@ -41,8 +44,8 @@ void acceptConnection(int index, SocketState* sockets, int& socketsCount)
 
 	if (INVALID_SOCKET == msgSocket)
 	{
-		cout << "Time Server: Error at accept(): " << WSAGetLastError() << endl;
-		//throw
+		message = "Time Server: Error at accept(): " + WSAGetLastError() ;
+		throw message;
 	}
 	//cout << "Time Server: Client " << inet_ntoa(from.sin_addr) << ":" << ntohs(from.sin_port) << " is connected." << endl;
 
@@ -108,7 +111,7 @@ void sendMessage(int index, SocketState* sockets, int& socketsCount)
 	if (timePassed <= 120)
 	{
 		// switch create the response 
-		string response; //= createResponse(index, sockets);
+		string response = createResponse(index, sockets);
 
 		bytesSent = send(msgSocket, response.c_str(), response.size(), 0);
 		if (SOCKET_ERROR == bytesSent)
