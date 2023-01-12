@@ -84,16 +84,16 @@ void receiveMessage(int index, SocketState* sockets, int& socketsCount)
 
 		sockets[index].len += bytesRecv;
 
-		// to do hendle the request
-		// with switch 
+		handleRequest(sockets, index);
 
 		if (sockets[index].len > 0)
 		{
 			sockets[index].send = SEND;
-			// find the \0 in the socket buffer
-			int lenOfResponded;
-			memcpy(sockets[index].buffer, &sockets[index].buffer[lenOfResponded], sockets[index].len - lenOfResponded);
-			sockets[index].len -= lenOfResponded;
+
+			int lenResponded;
+			findFirstBackslashzeroindex(index, sockets, lenResponded);
+			memcpy(sockets[index].buffer, &sockets[index].buffer[lenResponded], sockets[index].len - lenResponded);
+			sockets[index].len -= lenResponded;
 		}
 	}
 
@@ -110,15 +110,13 @@ void sendMessage(int index, SocketState* sockets, int& socketsCount)
 
 	if (timePassed <= 120)
 	{
-		// switch create the response 
-		string response = createResponse(index, sockets);
+		string response = createResponse(sockets, index);
 
 		bytesSent = send(msgSocket, response.c_str(), response.size(), 0);
 		if (SOCKET_ERROR == bytesSent)
 		{
 			cout << "Time Server: Error at send(): " << WSAGetLastError() << endl;
 			return;
-			// throw
 		}
 		if (sockets[index].len > 0)
 		{
@@ -137,64 +135,6 @@ void sendMessage(int index, SocketState* sockets, int& socketsCount)
 	}
 }
 
-void startServer(SocketState* sockets, int& socketsCount)
-{
-	while (true)
-	{
-
-		fd_set waitRecv;
-		FD_ZERO(&waitRecv);
-		for (int i = 0; i < MAX_SOCKETS; i++)
-		{
-			if ((sockets[i].recv == LISTEN) || (sockets[i].recv == RECEIVE))
-				FD_SET(sockets[i].id, &waitRecv);
-		}
-
-		fd_set waitSend;
-		FD_ZERO(&waitSend);
-		for (int i = 0; i < MAX_SOCKETS; i++)
-		{
-			if (sockets[i].send == SEND)
-				FD_SET(sockets[i].id, &waitSend);
-		}
-
-		int nfd;
-		selectCheck(nfd, waitRecv, waitSend);
-
-		for (int i = 0; i < MAX_SOCKETS && nfd > 0; i++)
-		{
-			if (FD_ISSET(sockets[i].id, &waitRecv))
-			{
-				nfd--;
-				switch (sockets[i].recv)
-				{
-				case LISTEN:
-					acceptConnection(i, sockets, socketsCount);
-					break;
-
-				case RECEIVE:
-					receiveMessage(i, sockets, socketsCount);
-					break;
-				}
-			}
-		}
-
-		for (int i = 0; i < MAX_SOCKETS && nfd > 0; i++)
-		{
-			if (FD_ISSET(sockets[i].id, &waitSend))
-			{
-				nfd--;
-				switch (sockets[i].send)
-				{
-				case SEND:
-					sendMessage(i, sockets, socketsCount);
-					break;
-				}
-			}
-		}
-	}
-}
-
 void selectCheck(int& nfd, fd_set& waitRecv, fd_set& waitSend)
 {
 	string message;
@@ -207,8 +147,7 @@ void selectCheck(int& nfd, fd_set& waitRecv, fd_set& waitSend)
 	}
 }
 
-
-void hendleRequest(SocketState* sockets, int index)
+void handleRequest(SocketState* sockets, int index)
 {
 	std::filesystem::path p = "C:\\temp\\";
 	filesystem::current_path(p);
@@ -226,6 +165,7 @@ void hendleRequest(SocketState* sockets, int index)
 			sockets[index].request = Get;
 		else
 			sockets[index].request = Head;
+
 		Buff >> sockets[index].wantedFile;
 		sockets[index].wantedFile = sockets[index].wantedFile.substr(1, sockets[index].wantedFile.length() - 1); // Removes Backslash
 		string fileName = crackLanguage(sockets[index].wantedFile);
@@ -293,6 +233,17 @@ httpMethods resolveMethods(string request)
 	return httpMethods::Error;
 }
 
+void createBaseMessage(int statusCode, ostringstream& message)
+{
+	time_t currTime;
+	time(&currTime);
+	message << "HTTP/1.1 " << statusCode << " " << statusMessages[statusCode]<< "\n";
+	message << "Date: " << ctime(&currTime); // ctime automatically adds \n
+	message << "Server: HTTP Web Server\n";
+	message << "Content-Type: text/html\n";
+	message << "Connection: keep-alive\n";
+}
+
 string crackLanguage(string& wantedFile)
 {
 	string lang;
@@ -300,7 +251,7 @@ string crackLanguage(string& wantedFile)
 	int len = wantedFile.size(), i = 0;
 	bool sendDefault = false;
 
-	while (wantedFile[i] != '.' && i < len)
+	while (wantedFile[i] != '.' && i < len) //NNN
 	{
 		fileName << wantedFile[i];
 		i++;
@@ -312,17 +263,20 @@ string crackLanguage(string& wantedFile)
 	}
 	if (i < len)
 	{
-		ostringstream queryString;
+		ostringstream queryParam;
 		while (wantedFile[i] != '=' && i < len)
 		{
 			if (wantedFile[i] != '?')
-				queryString << wantedFile[i];
+				queryParam << wantedFile[i];
 			i++;
 		}
-		queryString << wantedFile[i];
+		queryParam << wantedFile[i];
 		i++;
-		if (queryString.str() != "lang=")
+		if (queryParam.str() != "lang=")// illigal query parameter
+		{
 			sendDefault = true;
+		}
+
 		if (!sendDefault)
 		{
 			lang = wantedFile[i];
@@ -333,13 +287,18 @@ string crackLanguage(string& wantedFile)
 		}
 	}
 	else
+	{
 		sendDefault = true;
+	}
+		
 	if (sendDefault)
 	{
 		string def = fileName.str();
 		def += finish.str();
 		if (fileExists(def))
+		{
 			return def;
+		}	
 		fileName << "_en"; // default - English
 		fileName << finish.str();
 	}
@@ -352,7 +311,7 @@ string createResponse(SocketState* sockets, int index)
 	ifstream file;
 	createBaseMessage(sockets[index].statusCode, fullMessage);
 
-	if (sockets[index].request == GET)
+	if (sockets[index].request == Get)
 	{
 		if (sockets[index].statusCode == 404)
 		{
@@ -363,13 +322,12 @@ string createResponse(SocketState* sockets, int index)
 		else // statusCode = 200
 		{
 			readFile(file, sockets[index].wantedFile, messageBody);
-			fullMessage << "Content-Length: " << messageBody.str().size() << "\n";
-			fullMessage << "\n";
-			fullMessage << messageBody.str();
+			fullMessage = createMessage(messageBody.str().size(), messageBody.str());
+
 		}
 	}
 
-	else if (sockets[index].request == HEAD)
+	if (sockets[index].request == Head)
 	{
 		if (sockets[index].statusCode == 404)
 		{
@@ -383,39 +341,35 @@ string createResponse(SocketState* sockets, int index)
 		fullMessage << "\n";
 	}
 
-	else if (sockets[index].request == POST)
+	if (sockets[index].request == Post)
 	{
 		string postResponse = "Sent POST response";
-		fullMessage << "Content-Length: " << postResponse.size() << "\n";
-		fullMessage << "\n";
-		fullMessage << postResponse;
+		fullMessage = createMessage(postResponse.size(), postResponse);
 	}
 
-	else if (sockets[index].request == _DELETE)
+	if (sockets[index].request == Delete)
 	{
 		if (sockets[index].statusCode == 200)
 			messageBody << "File Deleted Successfully";
 		else // statusCode = 404
 			messageBody << "404 NOT FOUND";
-		fullMessage << "Content-Length: " << messageBody.str().size() << "\n";
-		fullMessage << "\n";
-		fullMessage << messageBody.str();
+
+		fullMessage = createMessage(messageBody.str().size(), messageBody.str());
 	}
-	else if (sockets[index].request == OPTIONS)
+
+	if (sockets[index].request == Options)
 	{
 		fullMessage << "Allow: GET, POST, PUT, OPTIONS, DELETE, TRACE, HEAD\n";
 		fullMessage << "Accept-Language: he, en, fr\n";
 		fullMessage << "\n";
 	}
 
-	else if (sockets[index].request == TRACE)
+	if (sockets[index].request == Trace)
 	{
-		fullMessage << "Content-Length: " << strlen(sockets[index].buffer) << "\n";
-		fullMessage << "\n";
-		fullMessage << sockets[index].buffer;
+		fullMessage = createMessage(strlen(sockets[index].buffer), sockets[index].buffer);
 	}
 
-	else if (sockets[index].request == PUT)
+	if (sockets[index].request == Put)
 	{
 		ofstream output;
 		istringstream Buff(sockets[index].buffer);
@@ -423,23 +377,89 @@ string createResponse(SocketState* sockets, int index)
 		output.open(sockets[index].wantedFile, std::ofstream::out | std::ofstream::trunc);
 		output << extractPOSTMANbody(Buff);
 		output.close();
+
 		if (sockets[index].statusCode == 200)
 			response = "File Updated Successfully";
 		else // statusCode = 201
 			response = "File Created and Updated Successfully";
-		fullMessage << "Content-Length: " << response.size() << "\n";
-		fullMessage << "\n";
-		fullMessage << response;
-	}
 
-	else // _ERROR
+		fullMessage = createMessage(response.size(), response);
+	}
+	else // Error
 	{
 		string errorMessage = "Error. This Server Does Not Support This Kind Of Requests.";
 		errorMessage += "Please Check 'OPTIONS'.";
-		fullMessage << "Content-Length: " << errorMessage.size() << "\n";
-		fullMessage << "\n";
-		fullMessage << errorMessage;
+		fullMessage = createMessage(errorMessage.size(), errorMessage);
 	}
 
 	return fullMessage.str();
+}
+
+ostringstream createMessage(int size ,string message)
+{
+	ostringstream res;
+	res << "Content-Length: " << size << "\n";
+	res << "\n";
+	res << message;
+	return res;
+}
+
+bool fileExists(const string& fileName)
+{
+	ifstream file(fileName.c_str());
+	return file.good();
+}
+
+void executeDELETErequest(int index, SocketState* sockets)
+{
+	int status;
+	status = remove(sockets[index].wantedFile.c_str());
+	if (status == 0)
+		sockets[index].statusCode = 200;
+	else
+		sockets[index].statusCode = 404;
+}
+
+string extractPOSTMANbody(istringstream& Buff)
+{
+	string header, body;
+	ostringstream post;
+
+	while (getline(Buff, header))
+		if (header == "\n" || header == "\r")
+			break;
+	while (getline(Buff, body))
+	{
+		if (body == "\n" || body == "\r")
+			post << "\n";
+		else
+			post << body << endl;
+	}
+	return post.str();
+}
+
+void readFile(ifstream& File, string& fileName, ostringstream& message)
+{
+	File.open(fileName);
+	string temp;
+	while (File.good())
+	{
+		getline(File, temp);
+		if (temp.empty())
+			message << "\n";
+		else
+			message << temp << endl;
+	}
+}
+
+void findFirstBackslashzeroindex(int index, SocketState* sockets,int& lenOfResponded)
+{
+	int i = 0;
+	int bufferSize = (sizeof(sockets[index].buffer)) / sizeof((sockets[index].buffer[0]));
+	for (i = 0; i < bufferSize; i++)
+	{
+		if (sockets[index].buffer[i] == '\0')
+			break;
+	}
+	lenOfResponded = i;
 }
