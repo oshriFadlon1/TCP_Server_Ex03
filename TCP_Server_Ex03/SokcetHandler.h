@@ -21,3 +21,15 @@ void sendMessage(int index, SocketState* sockets, int& socketsCount);
 void selectCheck(int& nfd, fd_set& waitRecv, fd_set& waitSend);
 void startServer(SocketState* sockets, int& socketsCount);
 
+void handleRequest(SocketState* sockets, int index);
+httpMethods resolveMethods(string request);
+string crackLanguage(string& wantedFile);
+string createResponse(SocketState* sockets, int index);
+void findFirstBackslashzeroindex(int index, SocketState* sockets, int& lenOfResponded);
+
+void createBaseMessage(int statusCode, ostringstream& message);
+bool fileExists(const string& fileName);
+void executeDELETErequest(int index, SocketState* sockets);
+string extractPOSTMANbody(istringstream& Buff);
+void readFile(ifstream& File, string& fileName, ostringstream& message);
+ostringstream createMessage(int size, string message);

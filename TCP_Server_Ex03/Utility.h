@@ -11,6 +11,7 @@
 #include <Windows.h>
 #include <map>
 #include <fstream>
+#include <filesystem>
 
 using namespace std;
 
@@ -24,7 +25,13 @@ enum httpMethods {
 	Put,
 	Trace
 };
-map<int, string> statusMessages = 
+
+static map<string, httpMethods> request = { {"TRACE",httpMethods::Trace},{"DELETE",httpMethods::Delete},
+												{"PUT",httpMethods::Put},{"POST",httpMethods::Post},
+												{"HEAD",httpMethods::Head},{"GET",httpMethods::Get},
+												{"OPTIONS",httpMethods::Options} };
+
+static map<int, string> statusMessages =
 {
 	{200,"OK"} ,
 	{201, "Created" },
