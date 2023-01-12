@@ -27,9 +27,10 @@ string crackLanguage(string& wantedFile);
 string createResponse(SocketState* sockets, int index);
 void findFirstBackslashzeroindex(int index, SocketState* sockets, int& lenOfResponded);
 
-void createBaseMessage(int statusCode, ostringstream& message);
+void createBaseMessage(int statusCode, stringstream& message);
+string statusCode_description(int statusCode);
 bool fileExists(const string& fileName);
 void executeDELETErequest(int index, SocketState* sockets);
 string extractPOSTMANbody(stringstream& Buff);
-void readFile(ifstream& File, string& fileName, ostringstream& message);
-ostringstream createMessage(int size, string message);
+void readFile(ifstream& File, string& fileName, stringstream& message);
+stringstream createMessage(int size, string message);

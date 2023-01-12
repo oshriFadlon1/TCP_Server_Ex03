@@ -4,70 +4,108 @@ int main()
 {
 	struct SocketState sockets[MAX_SOCKETS] = { 0 };
 	int socketsCount = 0;
-
-<<<<<<< HEAD
-const int HTTP_PORT = 42069;
-const int MAX_SOCKETS = 60;
-const int EMPTY = 0;
-const int LISTEN = 1;
-const int RECEIVE = 2;
-const int IDLE = 3;
-const int SEND = 4;
-const int SEND_TIME = 1;
-const int SEND_SECONDS = 2;
-
-bool addSocket(SOCKET id, int what);
-void removeSocket(int index);
-void acceptConnection(int index);
-void receiveMessage(int index);
-void sendMessage(int index);
-
-struct SocketState sockets[MAX_SOCKETS] = { 0 };
-int socketsCount = 0;
-
-
-void main()
-{
-	// Initialize Winsock (Windows Sockets).
-
-	// Create a WSADATA object called wsaData.
-	// The WSADATA structure contains information about the Windows 
-	// Sockets implementation.
-=======
->>>>>>> origin/master
 	WSAData wsaData;
-	stratupWSA(wsaData);
+	string message = "Server: Error at WSAStartup()\n";
+	if (NO_ERROR != WSAStartup(MAKEWORD(2, 2), &wsaData))
+	{
+		throw message;
+	}
 
-	SOCKET listenSocket;
-	conncetSocket(listenSocket);
+	SOCKET listenSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+	if (INVALID_SOCKET == listenSocket)
+	{
+		message = "Server: Error at socket(): " + WSAGetLastError();
+		WSACleanup();
+		throw message;
+	}
 
+	sockaddr_in server;
+	server.sin_family = AF_INET;
+	server.sin_addr.s_addr = INADDR_ANY;
+	server.sin_port = htons(TIME_PORT);
 
 	sockaddr_in serverService;
-<<<<<<< HEAD
-	// Address family (must be AF_INET - Internet address family).
 	serverService.sin_family = AF_INET;
-	// IP address. The sin_addr is a union (s_addr is a unsigned long 
-	// (4 bytes) data type).
-	// inet_addr (Iternet address) is used to convert a string (char *) 
-	// into unsigned long.
-	// The IP address is INADDR_ANY to accept connections on all interfaces.
 	serverService.sin_addr.s_addr = INADDR_ANY;
-	// IP Port. The htons (host to network - short) function converts an
-	// unsigned short from host to TCP/IP network byte order 
-	// (which is big-endian).
-	serverService.sin_port = htons(HTTP_PORT);
-=======
-	sockaddrInInitialize(serverService);
->>>>>>> origin/master
+	serverService.sin_port = htons(TIME_PORT);
 
-	BindSocket(listenSocket, serverService);
+	if (SOCKET_ERROR == bind(listenSocket, (SOCKADDR*)&serverService, sizeof(serverService)))
+	{
+		message = "Time Server: Error at bind(): " + WSAGetLastError();
+		closesocket(listenSocket);
+		WSACleanup();
+		throw message;
+	}
 
-	addSocket(listenSocket, LISTEN,sockets,socketsCount);
 
-	startServer(sockets, socketsCount);
+	if (SOCKET_ERROR == listen(listenSocket, 5))
+	{
+		message = "Time Server: Error at listen(): " + WSAGetLastError();
+		closesocket(listenSocket);
+		WSACleanup();
+		throw message;
+	}
 
-	CloseServer(listenSocket);
-	return 0;
+	addSocket(listenSocket, LISTEN, sockets, socketsCount);
+	while (true)
+	{
+		fd_set waitRecv;
+		FD_ZERO(&waitRecv);
+		for (int i = 0; i < MAX_SOCKETS; i++)
+		{
+			if ((sockets[i].recv == LISTEN) || (sockets[i].recv == RECEIVE))
+				FD_SET(sockets[i].id, &waitRecv);
+		}
+
+		fd_set waitSend;
+		FD_ZERO(&waitSend);
+		for (int i = 0; i < MAX_SOCKETS; i++)
+		{
+			if (sockets[i].send == SEND)
+				FD_SET(sockets[i].id, &waitSend);
+		}
+
+		int nfd;
+		nfd = select(0, &waitRecv, &waitSend, NULL, NULL);
+		if (nfd == SOCKET_ERROR)
+		{
+			message = "Time Server: Error at select(): " + WSAGetLastError();
+			WSACleanup();
+			throw message;
+		}
+
+		for (int i = 0; i < MAX_SOCKETS && nfd > 0; i++)
+		{
+			if (FD_ISSET(sockets[i].id, &waitRecv))
+			{
+				nfd--;
+				switch (sockets[i].recv)
+				{
+				case LISTEN:
+					acceptConnection(i, sockets, socketsCount);
+					break;
+
+				case RECEIVE:
+					receiveMessage(i, sockets, socketsCount);
+					break;
+				}
+			}
+		}
+
+		for (int i = 0; i < MAX_SOCKETS && nfd > 0; i++)
+		{
+			if (FD_ISSET(sockets[i].id, &waitSend))
+			{
+				nfd--;
+				switch (sockets[i].send)
+				{
+				case SEND:
+					sendMessage(i, sockets, socketsCount);
+					break;
+				}
+			}
+		}
+	}
 }
 
 
