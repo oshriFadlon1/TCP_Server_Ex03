@@ -312,6 +312,7 @@ string createResponse(SocketState* sockets, int index)
 	stringstream fullMessage, messageBody;
 	ifstream file;
 	createBaseMessage(sockets[index].statusCode, fullMessage);
+	cout << fullMessage.str();
 
 	switch (sockets[index].request)
 	{
@@ -325,10 +326,13 @@ string createResponse(SocketState* sockets, int index)
 		else // statusCode = 200
 		{
 			readFile(file, sockets[index].wantedFile, messageBody);
-			fullMessage = createMessage(messageBody.str().size(), messageBody.str());
+			fullMessage << "Content-Length: " << messageBody.str().size() << "\n";
+			fullMessage << "\n";
+			fullMessage << messageBody.str();
 
 		}
 		break;
+
 	case Head:
 		if (sockets[index].statusCode == 404)
 		{
@@ -341,26 +345,37 @@ string createResponse(SocketState* sockets, int index)
 		}
 		fullMessage << "\n";
 		break;
+
 	case Post: {
 		string postResponse = "Sent POST response";
-		fullMessage = createMessage(postResponse.size(), postResponse); }
+		fullMessage << "Content-Length: " << postResponse.size() << "\n";
+		fullMessage << "\n";
+		fullMessage << postResponse; }
 		break;
+
 	case Delete:
 		if (sockets[index].statusCode == 200)
 			messageBody << "File Deleted Successfully";
 		else // statusCode = 404
 			messageBody << "404 NOT FOUND";
 
-		fullMessage = createMessage(messageBody.str().size(), messageBody.str());
+		fullMessage << "Content-Length: " << messageBody.str().size() << "\n";
+		fullMessage << "\n";
+		fullMessage << messageBody.str();
 		break;
+
 	case Options:
 		fullMessage << "Allow: GET, POST, PUT, OPTIONS, DELETE, TRACE, HEAD\n";
 		fullMessage << "Accept-Language: he, en, fr\n";
 		fullMessage << "\n";
 		break;
+
 	case Trace:
-		fullMessage = createMessage(strlen(sockets[index].buffer), sockets[index].buffer);
+		fullMessage << "Content-Length: " << strlen(sockets[index].buffer) << "\n";
+		fullMessage << "\n";
+		fullMessage << sockets[index].buffer;
 		break;
+
 	case Put: {
 		ofstream output;
 		stringstream Buff(sockets[index].buffer);
@@ -374,108 +389,22 @@ string createResponse(SocketState* sockets, int index)
 		else // statusCode = 201
 			response = "File Created and Updated Successfully";
 
-		fullMessage = createMessage(response.size(), response); }
+		fullMessage << "Content-Length: " << response.size() << "\n";
+		fullMessage << "\n";
+		fullMessage << response; }
 		break;
 
-	default:
+	default://Error
 		string errorMessage = "Error. This Server Does Not Support This Kind Of Requests.";
 		errorMessage += "Please Check 'OPTIONS'.";
-		fullMessage = createMessage(errorMessage.size(), errorMessage);
+		fullMessage << "Content-Length: " << errorMessage.size() << "\n";
+		fullMessage << "\n";
+		fullMessage << errorMessage;
 		break;
 	}
+	cout << fullMessage.str();
 
-	/*
-	if (sockets[index].request == Get)
-	{
-		if (sockets[index].statusCode == 404)
-		{
-			fullMessage << "Content-Length:" << 13 << "\n";
-			fullMessage << "\n";
-			fullMessage << "404 NOT FOUND";
-		}
-		else // statusCode = 200
-		{
-			readFile(file, sockets[index].wantedFile, messageBody);
-			fullMessage = createMessage(messageBody.str().size(), messageBody.str());
-
-		}
-	}
-
-	if (sockets[index].request == Head)
-	{
-		if (sockets[index].statusCode == 404)
-		{
-			fullMessage << "Content-Length: " << 13 << "\n";
-		}
-		else // statusCode = 200
-		{
-			readFile(file, sockets[index].wantedFile, messageBody);
-			fullMessage << "Content-Length: " << messageBody.str().size() << "\n";
-		}
-		fullMessage << "\n";
-	}
-
-	if (sockets[index].request == Post)
-	{
-		string postResponse = "Sent POST response";
-		fullMessage = createMessage(postResponse.size(), postResponse);
-	}
-
-	if (sockets[index].request == Delete)
-	{
-		if (sockets[index].statusCode == 200)
-			messageBody << "File Deleted Successfully";
-		else // statusCode = 404
-			messageBody << "404 NOT FOUND";
-
-		fullMessage = createMessage(messageBody.str().size(), messageBody.str());
-	}
-
-	if (sockets[index].request == Options)
-	{
-		fullMessage << "Allow: GET, POST, PUT, OPTIONS, DELETE, TRACE, HEAD\n";
-		fullMessage << "Accept-Language: he, en, fr\n";
-		fullMessage << "\n";
-	}
-
-	if (sockets[index].request == Trace)
-	{
-		fullMessage = createMessage(strlen(sockets[index].buffer), sockets[index].buffer);
-	}
-
-	if (sockets[index].request == Put)
-	{
-		ofstream output;
-		stringstream Buff(sockets[index].buffer);
-		string response;
-		output.open(sockets[index].wantedFile, std::ofstream::out | std::ofstream::trunc);
-		output << extractPOSTMANbody(Buff);
-		output.close();
-
-		if (sockets[index].statusCode == 200)
-			response = "File Updated Successfully";
-		else // statusCode = 201
-			response = "File Created and Updated Successfully";
-
-		fullMessage = createMessage(response.size(), response);
-	}
-	else // Error
-	{
-		string errorMessage = "Error. This Server Does Not Support This Kind Of Requests.";
-		errorMessage += "Please Check 'OPTIONS'.";
-		fullMessage = createMessage(errorMessage.size(), errorMessage);
-	}
-	*/
 	return fullMessage.str();
-}
-
-stringstream createMessage(int size ,string message)
-{
-	stringstream res;
-	res << "Content-Length: " << size << "\n";
-	res << "\n";
-	res << message;
-	return res;
 }
 
 bool fileExists(const string& fileName)

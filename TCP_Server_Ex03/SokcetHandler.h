@@ -33,4 +33,3 @@ bool fileExists(const string& fileName);
 void executeDELETErequest(int index, SocketState* sockets);
 string extractPOSTMANbody(stringstream& Buff);
 void readFile(ifstream& File, string& fileName, stringstream& message);
-stringstream createMessage(int size, string message);
