@@ -3,17 +3,7 @@
 
 using namespace std;
 
-bool addSocket(SOCKET id, int what, SocketState* sockets, int& socketsCount)
-{
-	string message;
-	unsigned long flag = 1;
-	if (ioctlsocket(id, FIONBIO, &flag) != 0)
-	{
-		
-		message = "Time Server: Error at ioctlsocket(): " + WSAGetLastError() ;
-		throw message;
-	}
-
+bool addSocket(SOCKET id, int what, SocketState* sockets, int& socketsCount) {
 	for (int i = 0; i < MAX_SOCKETS; i++)
 	{
 		if (sockets[i].recv == EMPTY)
@@ -114,7 +104,7 @@ void sendMessage(int index, SocketState* sockets, int& socketsCount)
 	if (timePassed <= 120)
 	{
 		string response = createResponse(sockets, index);
-
+		cout << response;
 		bytesSent = send(msgSocket, response.c_str(), response.size(), 0);
 		if (SOCKET_ERROR == bytesSent)
 		{
@@ -146,7 +136,7 @@ void selectCheck(int& nfd, fd_set& waitRecv, fd_set& waitSend)
 	{
 		message = "Time Server: Error at select(): " + WSAGetLastError();
 		WSACleanup();
-		throw message;
+		throw message;	
 	}
 }
 
@@ -236,21 +226,30 @@ httpMethods resolveMethods(string request)
 	return httpMethods::Error;
 }
 
-void createBaseMessage(int statusCode, ostringstream& message)
+void createBaseMessage(int statusCode, stringstream& message)
 {
 	time_t currTime;
 	time(&currTime);
-	message << "HTTP/1.1 " << statusCode << " " << statusMessages[statusCode]<< "\n";
+	message << "HTTP/1.1 " << statusCode << " " << statusCode_description(statusCode) << "\n";
 	message << "Date: " << ctime(&currTime); // ctime automatically adds \n
 	message << "Server: HTTP Web Server\n";
 	message << "Content-Type: text/html\n";
 	message << "Connection: keep-alive\n";
 }
 
+string statusCode_description(int statusCode)
+{
+	if (statusCode == 200) return "OK";
+	if (statusCode == 201) return "Created";
+	if (statusCode == 204) return "No Content";
+	if (statusCode == 404) return "Not Found";
+	else return "Not Implemented";
+}
+
 string crackLanguage(string& wantedFile)
 {
 	string lang;
-	ostringstream fileName, finish;
+	stringstream fileName, finish;
 	int len = wantedFile.size(), i = 0;
 	bool sendDefault = false;
 
@@ -266,7 +265,7 @@ string crackLanguage(string& wantedFile)
 	}
 	if (i < len)
 	{
-		ostringstream queryParam;
+		stringstream queryParam;
 		while (wantedFile[i] != '=' && i < len)
 		{
 			if (wantedFile[i] != '?')
@@ -310,10 +309,82 @@ string crackLanguage(string& wantedFile)
 
 string createResponse(SocketState* sockets, int index)
 {
-	std::ostringstream fullMessage, messageBody;
+	stringstream fullMessage, messageBody;
 	ifstream file;
 	createBaseMessage(sockets[index].statusCode, fullMessage);
 
+	switch (sockets[index].request)
+	{
+	case Get:
+		if (sockets[index].statusCode == 404)
+		{
+			fullMessage << "Content-Length:" << 13 << "\n";
+			fullMessage << "\n";
+			fullMessage << "404 NOT FOUND";
+		}
+		else // statusCode = 200
+		{
+			readFile(file, sockets[index].wantedFile, messageBody);
+			fullMessage = createMessage(messageBody.str().size(), messageBody.str());
+
+		}
+		break;
+	case Head:
+		if (sockets[index].statusCode == 404)
+		{
+			fullMessage << "Content-Length: " << 13 << "\n";
+		}
+		else // statusCode = 200
+		{
+			readFile(file, sockets[index].wantedFile, messageBody);
+			fullMessage << "Content-Length: " << messageBody.str().size() << "\n";
+		}
+		fullMessage << "\n";
+		break;
+	case Post: {
+		string postResponse = "Sent POST response";
+		fullMessage = createMessage(postResponse.size(), postResponse); }
+		break;
+	case Delete:
+		if (sockets[index].statusCode == 200)
+			messageBody << "File Deleted Successfully";
+		else // statusCode = 404
+			messageBody << "404 NOT FOUND";
+
+		fullMessage = createMessage(messageBody.str().size(), messageBody.str());
+		break;
+	case Options:
+		fullMessage << "Allow: GET, POST, PUT, OPTIONS, DELETE, TRACE, HEAD\n";
+		fullMessage << "Accept-Language: he, en, fr\n";
+		fullMessage << "\n";
+		break;
+	case Trace:
+		fullMessage = createMessage(strlen(sockets[index].buffer), sockets[index].buffer);
+		break;
+	case Put: {
+		ofstream output;
+		stringstream Buff(sockets[index].buffer);
+		string response;
+		output.open(sockets[index].wantedFile, std::ofstream::out | std::ofstream::trunc);
+		output << extractPOSTMANbody(Buff);
+		output.close();
+
+		if (sockets[index].statusCode == 200)
+			response = "File Updated Successfully";
+		else // statusCode = 201
+			response = "File Created and Updated Successfully";
+
+		fullMessage = createMessage(response.size(), response); }
+		break;
+
+	default:
+		string errorMessage = "Error. This Server Does Not Support This Kind Of Requests.";
+		errorMessage += "Please Check 'OPTIONS'.";
+		fullMessage = createMessage(errorMessage.size(), errorMessage);
+		break;
+	}
+
+	/*
 	if (sockets[index].request == Get)
 	{
 		if (sockets[index].statusCode == 404)
@@ -394,13 +465,13 @@ string createResponse(SocketState* sockets, int index)
 		errorMessage += "Please Check 'OPTIONS'.";
 		fullMessage = createMessage(errorMessage.size(), errorMessage);
 	}
-
+	*/
 	return fullMessage.str();
 }
 
-ostringstream createMessage(int size ,string message)
+stringstream createMessage(int size ,string message)
 {
-	ostringstream res;
+	stringstream res;
 	res << "Content-Length: " << size << "\n";
 	res << "\n";
 	res << message;
@@ -426,7 +497,7 @@ void executeDELETErequest(int index, SocketState* sockets)
 string extractPOSTMANbody(stringstream& Buff)
 {
 	string header, body;
-	ostringstream post;
+	stringstream post;
 
 	while (getline(Buff, header))
 		if (header == "\n" || header == "\r")
@@ -441,7 +512,7 @@ string extractPOSTMANbody(stringstream& Buff)
 	return post.str();
 }
 
-void readFile(ifstream& File, string& fileName, ostringstream& message)
+void readFile(ifstream& File, string& fileName, stringstream& message)
 {
 	File.open(fileName);
 	string temp;

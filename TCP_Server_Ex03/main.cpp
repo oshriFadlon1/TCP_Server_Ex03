@@ -4,25 +4,108 @@ int main()
 {
 	struct SocketState sockets[MAX_SOCKETS] = { 0 };
 	int socketsCount = 0;
-
 	WSAData wsaData;
-	stratupWSA(wsaData);
+	string message = "Server: Error at WSAStartup()\n";
+	if (NO_ERROR != WSAStartup(MAKEWORD(2, 2), &wsaData))
+	{
+		throw message;
+	}
 
-	SOCKET listenSocket;
-	conncetSocket(listenSocket);
+	SOCKET listenSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+	if (INVALID_SOCKET == listenSocket)
+	{
+		message = "Server: Error at socket(): " + WSAGetLastError();
+		WSACleanup();
+		throw message;
+	}
 
+	sockaddr_in server;
+	server.sin_family = AF_INET;
+	server.sin_addr.s_addr = INADDR_ANY;
+	server.sin_port = htons(TIME_PORT);
 
 	sockaddr_in serverService;
-	sockaddrInInitialize(serverService);
+	serverService.sin_family = AF_INET;
+	serverService.sin_addr.s_addr = INADDR_ANY;
+	serverService.sin_port = htons(TIME_PORT);
 
-	BindSocket(listenSocket, serverService);
+	if (SOCKET_ERROR == bind(listenSocket, (SOCKADDR*)&serverService, sizeof(serverService)))
+	{
+		message = "Time Server: Error at bind(): " + WSAGetLastError();
+		closesocket(listenSocket);
+		WSACleanup();
+		throw message;
+	}
 
-	addSocket(listenSocket, LISTEN,sockets,socketsCount);
 
-	startServer(sockets, socketsCount);
+	if (SOCKET_ERROR == listen(listenSocket, 5))
+	{
+		message = "Time Server: Error at listen(): " + WSAGetLastError();
+		closesocket(listenSocket);
+		WSACleanup();
+		throw message;
+	}
 
-	CloseServer(listenSocket);
-	return 0;
+	addSocket(listenSocket, LISTEN, sockets, socketsCount);
+	while (true)
+	{
+		fd_set waitRecv;
+		FD_ZERO(&waitRecv);
+		for (int i = 0; i < MAX_SOCKETS; i++)
+		{
+			if ((sockets[i].recv == LISTEN) || (sockets[i].recv == RECEIVE))
+				FD_SET(sockets[i].id, &waitRecv);
+		}
+
+		fd_set waitSend;
+		FD_ZERO(&waitSend);
+		for (int i = 0; i < MAX_SOCKETS; i++)
+		{
+			if (sockets[i].send == SEND)
+				FD_SET(sockets[i].id, &waitSend);
+		}
+
+		int nfd;
+		nfd = select(0, &waitRecv, &waitSend, NULL, NULL);
+		if (nfd == SOCKET_ERROR)
+		{
+			message = "Time Server: Error at select(): " + WSAGetLastError();
+			WSACleanup();
+			throw message;
+		}
+
+		for (int i = 0; i < MAX_SOCKETS && nfd > 0; i++)
+		{
+			if (FD_ISSET(sockets[i].id, &waitRecv))
+			{
+				nfd--;
+				switch (sockets[i].recv)
+				{
+				case LISTEN:
+					acceptConnection(i, sockets, socketsCount);
+					break;
+
+				case RECEIVE:
+					receiveMessage(i, sockets, socketsCount);
+					break;
+				}
+			}
+		}
+
+		for (int i = 0; i < MAX_SOCKETS && nfd > 0; i++)
+		{
+			if (FD_ISSET(sockets[i].id, &waitSend))
+			{
+				nfd--;
+				switch (sockets[i].send)
+				{
+				case SEND:
+					sendMessage(i, sockets, socketsCount);
+					break;
+				}
+			}
+		}
+	}
 }
 
 
