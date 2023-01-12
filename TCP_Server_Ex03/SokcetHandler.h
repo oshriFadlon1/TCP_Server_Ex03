@@ -30,6 +30,6 @@ void findFirstBackslashzeroindex(int index, SocketState* sockets, int& lenOfResp
 void createBaseMessage(int statusCode, ostringstream& message);
 bool fileExists(const string& fileName);
 void executeDELETErequest(int index, SocketState* sockets);
-string extractPOSTMANbody(istringstream& Buff);
+string extractPOSTMANbody(stringstream& Buff);
 void readFile(ifstream& File, string& fileName, ostringstream& message);
 ostringstream createMessage(int size, string message);

@@ -1,4 +1,7 @@
 #include "SokcetHandler.h"
+#include <sstream>
+
+using namespace std;
 
 bool addSocket(SOCKET id, int what, SocketState* sockets, int& socketsCount)
 {
@@ -152,7 +155,7 @@ void handleRequest(SocketState* sockets, int index)
 	std::filesystem::path p = "C:\\temp\\";
 	filesystem::current_path(p);
 	string request;
-	istringstream Buff(sockets[index].buffer);
+	stringstream Buff(sockets[index].buffer);
 
 	Buff >> request;
 	cout << "Client Request: " << request << endl;
@@ -307,7 +310,7 @@ string crackLanguage(string& wantedFile)
 
 string createResponse(SocketState* sockets, int index)
 {
-	ostringstream fullMessage, messageBody;
+	std::ostringstream fullMessage, messageBody;
 	ifstream file;
 	createBaseMessage(sockets[index].statusCode, fullMessage);
 
@@ -372,7 +375,7 @@ string createResponse(SocketState* sockets, int index)
 	if (sockets[index].request == Put)
 	{
 		ofstream output;
-		istringstream Buff(sockets[index].buffer);
+		stringstream Buff(sockets[index].buffer);
 		string response;
 		output.open(sockets[index].wantedFile, std::ofstream::out | std::ofstream::trunc);
 		output << extractPOSTMANbody(Buff);
@@ -420,7 +423,7 @@ void executeDELETErequest(int index, SocketState* sockets)
 		sockets[index].statusCode = 404;
 }
 
-string extractPOSTMANbody(istringstream& Buff)
+string extractPOSTMANbody(stringstream& Buff)
 {
 	string header, body;
 	ostringstream post;
