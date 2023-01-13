@@ -31,7 +31,7 @@ int main()
 
 	if (SOCKET_ERROR == bind(listenSocket, (SOCKADDR*)&serverService, sizeof(serverService)))
 	{
-		cout << "Time Server: Error at bind(): " << WSAGetLastError() << endl;
+		cout << "Server: Error at bind(): " << WSAGetLastError() << endl;
 		closesocket(listenSocket);
 		WSACleanup();
 		exit(1);
@@ -40,11 +40,12 @@ int main()
 
 	if (SOCKET_ERROR == listen(listenSocket, 5))
 	{
-		cout << "Time Server: Error at listen(): " << WSAGetLastError() << endl;
+		cout << "Server: Error at listen(): " << WSAGetLastError() << endl;
 		closesocket(listenSocket);
 		WSACleanup();
 		exit(1);
 	}
+
 
 	addSocket(listenSocket, LISTEN, sockets, socketsCount);
 	while (true)
@@ -69,7 +70,7 @@ int main()
 		nfd = select(0, &waitRecv, &waitSend, NULL, NULL);
 		if (nfd == SOCKET_ERROR)
 		{
-			cout << "Time Server: Error at select(): " << WSAGetLastError() <<endl;
+			cout << "Server: Error at select(): " << WSAGetLastError() <<endl;
 			WSACleanup();
 			exit(1);
 		}

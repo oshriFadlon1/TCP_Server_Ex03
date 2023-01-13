@@ -37,7 +37,7 @@ void acceptConnection(int index, SocketState* sockets, int& socketsCount)
 
 	if (INVALID_SOCKET == msgSocket)
 	{
-		message = "Time Server: Error at accept(): " + WSAGetLastError() ;
+		message = "Server: Error at accept(): " + WSAGetLastError() ;
 		throw message;
 	}
 	//cout << "Time Server: Client " << inet_ntoa(from.sin_addr) << ":" << ntohs(from.sin_port) << " is connected." << endl;
@@ -59,7 +59,7 @@ void receiveMessage(int index, SocketState* sockets, int& socketsCount)
 
 	if (SOCKET_ERROR == bytesRecv)
 	{
-		cout << "Time Server: Error at recv(): " << WSAGetLastError() << endl;
+		cout << "Server: Error at recv(): " << WSAGetLastError() << endl;
 		closesocket(msgSocket);
 		removeSocket(index, sockets, socketsCount);
 		return;
@@ -73,7 +73,7 @@ void receiveMessage(int index, SocketState* sockets, int& socketsCount)
 	else
 	{
 		sockets[index].buffer[len + bytesRecv] = '\0'; //add the null-terminating to make it a string
-		cout << "Time Server: Recieved: " << bytesRecv << " bytes of \"" << &sockets[index].buffer[len] << "\" message.\n";
+		cout << "Server: Recieved: " << bytesRecv << " bytes of \"" << &sockets[index].buffer[len] << "\" message.\n";
 
 		sockets[index].len += bytesRecv;
 
@@ -108,7 +108,7 @@ void sendMessage(int index, SocketState* sockets, int& socketsCount)
 		bytesSent = send(msgSocket, response.c_str(), response.size(), 0);
 		if (SOCKET_ERROR == bytesSent)
 		{
-			cout << "Time Server: Error at send(): " << WSAGetLastError() << endl;
+			cout << "Server: Error at send(): " << WSAGetLastError() << endl;
 			return;
 		}
 		if (sockets[index].len > 0)
@@ -134,7 +134,7 @@ void selectCheck(int& nfd, fd_set& waitRecv, fd_set& waitSend)
 	nfd = select(0, &waitRecv, &waitSend, NULL, NULL);
 	if (nfd == SOCKET_ERROR)
 	{
-		message = "Time Server: Error at select(): " + WSAGetLastError();
+		message = "Server: Error at select(): " + WSAGetLastError();
 		WSACleanup();
 		throw message;	
 	}
@@ -253,7 +253,7 @@ string crackLanguage(string& wantedFile)
 	int len = wantedFile.size(), i = 0;
 	bool sendDefault = false;
 
-	while (wantedFile[i] != '.' && i < len) //NNN
+	while (wantedFile[i] != '.' && i < len)
 	{
 		fileName << wantedFile[i];
 		i++;
