@@ -1,22 +1,22 @@
-#include"TCP_Server.h"
+#include"SokcetHandler.h"
 
 int main()
 {
 	struct SocketState sockets[MAX_SOCKETS] = { 0 };
 	int socketsCount = 0;
 	WSAData wsaData;
-	string message = "Server: Error at WSAStartup()\n";
 	if (NO_ERROR != WSAStartup(MAKEWORD(2, 2), &wsaData))
 	{
-		throw message;
+		cout << "Server: Error at WSAStartup()\n";
+		exit(1);
 	}
 
 	SOCKET listenSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 	if (INVALID_SOCKET == listenSocket)
 	{
-		message = "Server: Error at socket(): " + WSAGetLastError();
+		cout << "Server: Error at socket(): " << WSAGetLastError() << endl;
 		WSACleanup();
-		throw message;
+		exit(1);
 	}
 
 	sockaddr_in server;
@@ -31,19 +31,19 @@ int main()
 
 	if (SOCKET_ERROR == bind(listenSocket, (SOCKADDR*)&serverService, sizeof(serverService)))
 	{
-		message = "Time Server: Error at bind(): " + WSAGetLastError();
+		cout << "Time Server: Error at bind(): " << WSAGetLastError() << endl;
 		closesocket(listenSocket);
 		WSACleanup();
-		throw message;
+		exit(1);
 	}
 
 
 	if (SOCKET_ERROR == listen(listenSocket, 5))
 	{
-		message = "Time Server: Error at listen(): " + WSAGetLastError();
+		cout << "Time Server: Error at listen(): " << WSAGetLastError() << endl;
 		closesocket(listenSocket);
 		WSACleanup();
-		throw message;
+		exit(1);
 	}
 
 	addSocket(listenSocket, LISTEN, sockets, socketsCount);
@@ -69,9 +69,9 @@ int main()
 		nfd = select(0, &waitRecv, &waitSend, NULL, NULL);
 		if (nfd == SOCKET_ERROR)
 		{
-			message = "Time Server: Error at select(): " + WSAGetLastError();
+			cout << "Time Server: Error at select(): " << WSAGetLastError() <<endl;
 			WSACleanup();
-			throw message;
+			exit(1);
 		}
 
 		for (int i = 0; i < MAX_SOCKETS && nfd > 0; i++)

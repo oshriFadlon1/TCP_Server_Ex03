@@ -19,7 +19,7 @@ void acceptConnection(int index, SocketState* sockets, int& socketsCount);
 void receiveMessage(int index, SocketState* sockets, int& socketsCount);
 void sendMessage(int index, SocketState* sockets, int& socketsCount);
 void selectCheck(int& nfd, fd_set& waitRecv, fd_set& waitSend);
-void startServer(SocketState* sockets, int& socketsCount);
+
 
 void handleRequest(SocketState* sockets, int index);
 httpMethods resolveMethods(string request);
