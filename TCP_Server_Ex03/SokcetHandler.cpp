@@ -128,18 +128,6 @@ void sendMessage(int index, SocketState* sockets, int& socketsCount)
 	}
 }
 
-void selectCheck(int& nfd, fd_set& waitRecv, fd_set& waitSend)
-{
-	string message;
-	nfd = select(0, &waitRecv, &waitSend, NULL, NULL);
-	if (nfd == SOCKET_ERROR)
-	{
-		message = "Server: Error at select(): " + WSAGetLastError();
-		WSACleanup();
-		throw message;	
-	}
-}
-
 void handleRequest(SocketState* sockets, int index)
 {
 	std::filesystem::path p = "C:\\temp\\";
@@ -350,7 +338,7 @@ string createResponse(SocketState* sockets, int index)
 		string postResponse = "Sent POST response";
 		fullMessage << "Content-Length: " << postResponse.size() << "\n";
 		fullMessage << "\n";
-		fullMessage << postResponse; }
+		fullMessage << postResponse << endl; }
 		break;
 
 	case Delete:
