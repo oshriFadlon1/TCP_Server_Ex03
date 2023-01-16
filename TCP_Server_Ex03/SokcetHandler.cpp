@@ -40,7 +40,6 @@ void acceptConnection(int index, SocketState* sockets, int& socketsCount)
 		message = "Server: Error at accept(): " + WSAGetLastError() ;
 		throw message;
 	}
-	//cout << "Time Server: Client " << inet_ntoa(from.sin_addr) << ":" << ntohs(from.sin_port) << " is connected." << endl;
 
 	if (addSocket(msgSocket, RECEIVE, sockets, socketsCount) == false)
 	{
@@ -130,8 +129,8 @@ void sendMessage(int index, SocketState* sockets, int& socketsCount)
 
 void handleRequest(SocketState* sockets, int index)
 {
-	std::filesystem::path p = "C:\\temp\\";
-	filesystem::current_path(p);
+	std::filesystem::path path = "C:\\temp\\";
+	filesystem::current_path(path);
 	string request;
 	stringstream Buff(sockets[index].buffer);
 
@@ -143,18 +142,23 @@ void handleRequest(SocketState* sockets, int index)
 	case httpMethods::Get:case httpMethods::Head:
 	{
 		if (method == httpMethods::Get)
+		{
 			sockets[index].request = Get;
-		else
+		}
+		else {
 			sockets[index].request = Head;
+		}
 
 		Buff >> sockets[index].wantedFile;
 		sockets[index].wantedFile = sockets[index].wantedFile.substr(1, sockets[index].wantedFile.length() - 1); // Removes Backslash
 		string fileName = crackLanguage(sockets[index].wantedFile);
 		sockets[index].wantedFile = fileName;
-		if (fileExists(sockets[index].wantedFile))
+		if (fileExists(sockets[index].wantedFile)) {
 			sockets[index].statusCode = 200;
-		else
+		}
+		else {
 			sockets[index].statusCode = 404;
+		}
 		break;
 	}
 	case httpMethods::Post:
@@ -186,7 +190,12 @@ void handleRequest(SocketState* sockets, int index)
 		sockets[index].request = Put;
 		Buff >> sockets[index].wantedFile;
 		sockets[index].wantedFile = sockets[index].wantedFile.substr(1, sockets[index].wantedFile.length() - 1);
-		(fileExists(sockets[index].wantedFile)) ? sockets[index].statusCode = 200 : sockets[index].statusCode = 201;
+		if (fileExists(sockets[index].wantedFile)) {
+			sockets[index].statusCode = 200;
+		}
+		else {
+			sockets[index].statusCode = 201;
+		}
 		break;
 	default: // ERROR
 		sockets[index].request = Error;
@@ -197,29 +206,42 @@ void handleRequest(SocketState* sockets, int index)
 
 httpMethods resolveMethods(string request)
 {
-	if (request == "GET")
+	if (request == "GET") {
 		return httpMethods::Get;
-	if (request == "HEAD")
+	}
+	if (request == "HEAD") {
 		return httpMethods::Head;
-	if (request == "POST")
+	}
+
+	if (request == "POST") {
 		return httpMethods::Post;
-	if (request == "DELETE")
+	}
+
+	if (request == "DELETE") {
 		return httpMethods::Delete;
-	if (request == "OPTIONS")
+	}
+
+	if (request == "OPTIONS") {
 		return httpMethods::Options;
-	if (request == "PUT")
+	}
+
+	if (request == "PUT") {
 		return httpMethods::Put;
-	if (request == "TRACE")
+	}
+
+	if (request == "TRACE") {
 		return httpMethods::Trace;
+	}
+
 	return httpMethods::Error;
 }
 
 void createBaseMessage(int statusCode, stringstream& message)
 {
-	time_t currTime;
-	time(&currTime);
+	time_t currentTime;
+	time(&currentTime);
 	message << "HTTP/1.1 " << statusCode << " " << statusCode_description(statusCode) << "\n";
-	message << "Date: " << ctime(&currTime); // ctime automatically adds \n
+	message << "Date: " << ctime(&currentTime); // ctime automatically adds \n
 	message << "Server: HTTP Web Server\n";
 	message << "Content-Type: text/html\n";
 	message << "Connection: keep-alive\n";
@@ -227,19 +249,30 @@ void createBaseMessage(int statusCode, stringstream& message)
 
 string statusCode_description(int statusCode)
 {
-	if (statusCode == 200) return "OK";
-	if (statusCode == 201) return "Created";
-	if (statusCode == 204) return "No Content";
-	if (statusCode == 404) return "Not Found";
-	else return "Not Implemented";
+	if (statusCode == 200) {
+		return "OK";
+	}
+	if (statusCode == 201) {
+		return "Created";
+	}
+	if (statusCode == 204) {
+		return "No Content";
+	}
+	if (statusCode == 404) { 
+		return "Not Found"; 
+	}
+	else {
+		return "Not Implemented";
+	}
 }
 
 string crackLanguage(string& wantedFile)
 {
 	string lang;
 	stringstream fileName, finish;
+	stringstream queryParam;
 	int len = wantedFile.size(), i = 0;
-	bool sendDefault = false;
+	bool sendDefaultLanguage = false;
 
 	while (wantedFile[i] != '.' && i < len)
 	{
@@ -253,35 +286,40 @@ string crackLanguage(string& wantedFile)
 	}
 	if (i < len)
 	{
-		stringstream queryParam;
+		
 		while (wantedFile[i] != '=' && i < len)
 		{
 			if (wantedFile[i] != '?')
+			{
 				queryParam << wantedFile[i];
+			}
+
 			i++;
 		}
 		queryParam << wantedFile[i];
 		i++;
 		if (queryParam.str() != "lang=")// illigal query parameter
 		{
-			sendDefault = true;
+			sendDefaultLanguage = true;
 		}
 
-		if (!sendDefault)
+		if (!sendDefaultLanguage)
 		{
 			lang = wantedFile[i];
 			i++;
 			while (i < len)
+			{
 				lang += wantedFile[i++];
+			}
 			fileName << "_" << lang << finish.str();
 		}
 	}
 	else
 	{
-		sendDefault = true;
+		sendDefaultLanguage = true;
 	}
 		
-	if (sendDefault)
+	if (sendDefaultLanguage)
 	{
 		string def = fileName.str();
 		def += finish.str();
@@ -343,9 +381,13 @@ string createResponse(SocketState* sockets, int index)
 
 	case Delete:
 		if (sockets[index].statusCode == 200)
+		{
 			messageBody << "File Deleted Successfully";
+		}
 		else // statusCode = 404
+		{
 			messageBody << "404 NOT FOUND";
+		}
 
 		fullMessage << "Content-Length: " << messageBody.str().size() << "\n";
 		fullMessage << "\n";
@@ -406,9 +448,13 @@ void executeDELETErequest(int index, SocketState* sockets)
 	int status;
 	status = remove(sockets[index].wantedFile.c_str());
 	if (status == 0)
+	{
 		sockets[index].statusCode = 200;
+	}
 	else
+	{
 		sockets[index].statusCode = 404;
+	}
 }
 
 string extractPOSTMANbody(stringstream& Buff)
@@ -417,8 +463,13 @@ string extractPOSTMANbody(stringstream& Buff)
 	stringstream post;
 
 	while (getline(Buff, header))
+	{
 		if (header == "\n" || header == "\r")
+		{
 			break;
+		}
+	}
+
 	while (getline(Buff, body))
 	{
 		if (body == "\n" || body == "\r")
@@ -432,14 +483,19 @@ string extractPOSTMANbody(stringstream& Buff)
 void readFile(ifstream& File, string& fileName, stringstream& message)
 {
 	File.open(fileName);
-	string temp;
+	string line;
 	while (File.good())
 	{
-		getline(File, temp);
-		if (temp.empty())
+		getline(File, line);
+		if (line.empty())
+		{
 			message << "\n";
+		}
 		else
-			message << temp << endl;
+		{
+			message << line << endl;
+		}
+
 	}
 }
 
@@ -450,7 +506,9 @@ void findFirstBackslashzeroindex(int index, SocketState* sockets,int& lenOfRespo
 	for (i = 0; i < bufferSize; i++)
 	{
 		if (sockets[index].buffer[i] == '\0')
+		{
 			break;
+		}
 	}
 	lenOfResponded = i;
 }

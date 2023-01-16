@@ -48,6 +48,8 @@ int main()
 
 
 	addSocket(listenSocket, LISTEN, sockets, socketsCount);
+
+	cout << "The server listens and waits for connections " << endl;
 	while (true)
 	{
 		fd_set waitRecv;
