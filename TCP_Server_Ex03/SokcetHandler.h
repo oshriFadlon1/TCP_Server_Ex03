@@ -3,8 +3,8 @@
 typedef struct SocketState
 {
 	SOCKET id;			// Socket handle
-	int	recv;			// Receiving?
-	int	send;			// Sending?
+	int	recv;			// Receiving
+	int	send;			// Sending
 	char buffer[2048];
 	int len;
 	int request;		// GET, POST, ...
